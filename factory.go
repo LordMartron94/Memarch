@@ -1,10 +1,10 @@
 // Package memarch provides data structures to be used.
-// It internally wraps memcore/primitives and memforge.
+// It internally wraps memstruct and memforge.
 package memarch
 
 import (
-	"memcore/primitives"
-	"unsafe"
+	"memcore"
+	"memstruct"
 )
 
 // AllocationFn represents the allocation function to use for the creation of a data structure.
@@ -12,34 +12,37 @@ import (
 //
 // For safety it is best to wrap your actual allocation function so you can catch and handle errors
 // where they occur.
-type AllocationFn func(sizeBytes, alignment uint64) unsafe.Pointer
+type AllocationFn func(sizeBytes, alignment uint64) memcore.MarkRaw
 
-// ArrayCreate creates an instance of an array for type T using the provided allocation method.
+// MemArchArrayCreate creates an instance of an array for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
-func ArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) *primitives.Array[T] {
-	arraySize := primitives.ArrayRequiredBytesGet[T](capacityElements)
-	arrayAlignment := primitives.ArrayRequiredAlignmentGet[T]()
+func MemArchArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Array[T]) {
+	arraySize := memstruct.ArrayRequiredBytesGet[T](capacityElements)
+	arrayAlignment := memstruct.ArrayRequiredAlignmentGet[T]()
 
 	addr := allocFn(arraySize, arrayAlignment)
-	return primitives.ArrayCreateAt[T](addr, capacityElements)
+	memstruct.ArrayInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
 }
 
-// StackCreate creates an instance of a stack for type T using the provided allocation method.
+// MemArchStackCreate creates an instance of a stack for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
-func StackCreate[T any](allocFn AllocationFn, capacityElements uint64) *primitives.Stack[T] {
-	stackSize := primitives.StackRequiredBytesGet[T](capacityElements)
-	stackAlignment := primitives.StackRequiredAlignmentGet[T]()
+func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Stack[T]) {
+	stackSize := memstruct.StackRequiredBytesGet[T](capacityElements)
+	stackAlignment := memstruct.StackRequiredAlignmentGet[T]()
 
 	addr := allocFn(stackSize, stackAlignment)
-	return primitives.StackCreateAt[T](addr, capacityElements)
+	memstruct.StackInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Stack[T]](addr)
 }
 
-// FixedOrderedListCreate creates an instance of a fixed ordered for type T using the provided allocation method.
+// MemArchFixedOrderedListCreate creates an instance of a fixed ordered for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
-func FixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements uint64) *primitives.FixedOrderedList[T] {
-	requiredSize := primitives.FixedOrderedListRequiredBytes[T](capacityElements)
-	requiredAlignment := primitives.FixedOrderedListRequiredAlignment[T]()
+func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.FixedOrderedList[T]) {
+	requiredSize := memstruct.FixedOrderedListRequiredBytes[T](capacityElements)
+	requiredAlignment := memstruct.FixedOrderedListRequiredAlignment[T]()
 
 	addr := allocFn(requiredSize, requiredAlignment)
-	return primitives.FixedOrderedListCreateAt[T](addr, capacityElements)
+	memstruct.FixedOrderedListInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[T]](addr)
 }
