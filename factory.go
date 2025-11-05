@@ -3,6 +3,7 @@
 package memarch
 
 import (
+	"foundation"
 	"memcore"
 	"memstruct"
 )
@@ -45,4 +46,15 @@ func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements
 	addr := allocFn(requiredSize, requiredAlignment)
 	memstruct.FixedOrderedListInitializeAt[T](addr, capacityElements)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[T]](addr)
+}
+
+// MemArchVectorCreate creates an instance of a vector for type T using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
+	arraySize := memstruct.VectorRequiredBytesGet[T](capacityElements)
+	arrayAlignment := memstruct.VectorRequiredAlignmentGet[T]()
+
+	addr := allocFn(arraySize, arrayAlignment)
+	memstruct.ArrayInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
 }
