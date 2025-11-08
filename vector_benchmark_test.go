@@ -91,13 +91,13 @@ func runVectorBench[T foundation.Numeric](b *testing.B, capacity uint64, scale f
 			for i := 0; i < b.N; i++ {
 				switch i % 6 {
 				case 0:
-					memstruct.VectorSum[T](d.vector)
+					memstruct.VectorStructuralSumF32[T](d.vector)
 				case 1:
-					memstruct.VectorSumSquared[T](d.vector)
+					memstruct.VectorStructuralSumSquaredF32[T](d.vector)
 				case 2:
-					memstruct.VectorMagnitudeF64[T](d.vector)
+					memstruct.VectorStructuralMagnitudeF64[T](d.vector)
 				case 3:
-					memstruct.VectorMagnitudeF32[T](d.vector)
+					memstruct.VectorStructuralMagnitudeF32[T](d.vector)
 				case 4:
 					idx := uint64(i % int(capacity))
 					memstruct.VectorItemGetAtUnsafe[T](d.vector, idx)
@@ -154,7 +154,7 @@ func BenchmarkVectorSuite_Normalization(b *testing.B) {
 
 				func(d benchData, b *testing.B) {
 					for i := 0; i < b.N; i++ {
-						memstruct.VectorNormalizedF64[float64](d.srcVec, d.dstVec)
+						memstruct.VectorStructuralNormalizedF64[float64](d.srcVec, d.dstVec)
 					}
 				},
 

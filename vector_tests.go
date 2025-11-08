@@ -69,8 +69,8 @@ func TestVector(t *testing.T) {
 			// ─────────────────────────────
 			// 3. Magnitude tests
 			// ─────────────────────────────
-			magF64 := memstruct.VectorMagnitudeF64[uint8](vectorMark)
-			magF32 := memstruct.VectorMagnitudeF32[uint8](vectorMark)
+			magF64 := memstruct.VectorStructuralMagnitudeF64[uint8](vectorMark)
+			magF32 := memstruct.VectorStructuralMagnitudeF32[uint8](vectorMark)
 
 			expected := math.Sqrt(float64(5*5 + 15*15 + 250*250))
 			foundationtesting.Assert(
@@ -94,8 +94,8 @@ func TestVector(t *testing.T) {
 				3, // capacity
 			)
 
-			memstruct.VectorNormalizedF64[uint8](vectorMark, newVecAddr)
-			newMag := memstruct.VectorMagnitudeF64[float64](newVecAddr)
+			memstruct.VectorStructuralNormalizedF64[uint8](vectorMark, newVecAddr)
+			newMag := memstruct.VectorStructuralMagnitudeF64[float64](newVecAddr)
 
 			foundationtesting.Assert(
 				math.Abs(newMag-1.0) < 1e-9,

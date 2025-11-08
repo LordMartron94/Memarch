@@ -51,10 +51,10 @@ func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements
 // MemArchVectorCreate creates an instance of a vector for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
-	arraySize := memstruct.VectorRequiredBytesGet[T](capacityElements)
-	arrayAlignment := memstruct.VectorRequiredAlignmentGet[T]()
+	vectorSize := memstruct.VectorRequiredBytesGet[T](capacityElements)
+	vectirAlignment := memstruct.VectorRequiredAlignmentGet[T]()
 
-	addr := allocFn(arraySize, arrayAlignment)
+	addr := allocFn(vectorSize, vectirAlignment)
 	memstruct.ArrayInitializeAt[T](addr, capacityElements)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
 }
