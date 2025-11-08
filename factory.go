@@ -52,9 +52,20 @@ func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements
 // Do not store Go pointers inside manually managed memory.
 func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
 	vectorSize := memstruct.VectorRequiredBytesGet[T](capacityElements)
-	vectirAlignment := memstruct.VectorRequiredAlignmentGet[T]()
+	vectorAlignment := memstruct.VectorRequiredAlignmentGet[T]()
 
-	addr := allocFn(vectorSize, vectirAlignment)
+	addr := allocFn(vectorSize, vectorAlignment)
 	memstruct.ArrayInitializeAt[T](addr, capacityElements)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+}
+
+// MemArchStringCreate creates an instance of a string using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *memstruct.String) {
+	stringSize := memstruct.StringRequiredBytesGet(content)
+	stringAlignment := memstruct.StringRequiredAlignmentGet()
+
+	addr := allocFn(stringSize, stringAlignment)
+	memstruct.StringInitializeAt(addr, content)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.String](addr)
 }
