@@ -69,3 +69,18 @@ func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw,
 	memstruct.StringInitializeAt(addr, content)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.String](addr)
 }
+
+// MemArchHashMapCreate creates an instance of a hashmap using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchHashMapCreate[TKey, TValue any](
+	allocFn AllocationFn,
+	capacityElements uint64,
+	keyComparisonFunc memstruct.KeyComparer[TKey],
+) (memcore.MarkRaw, *memstruct.HashMap[TKey, TValue]) {
+	hashMapSize := memstruct.HashMapRequiredBytesGet[TKey, TValue](capacityElements)
+	hashMapAlignment := memstruct.HashMapRequiredAlignmentGet[TKey, TValue]()
+
+	addr := allocFn(hashMapSize, hashMapAlignment)
+	memstruct.HashMapInitializeAt[TKey, TValue](addr, capacityElements, keyComparisonFunc)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
+}
