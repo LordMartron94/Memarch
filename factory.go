@@ -76,11 +76,12 @@ func MemArchHashMapCreate[TKey, TValue any](
 	allocFn AllocationFn,
 	capacityElements uint64,
 	keyComparisonFunc memstruct.KeyComparer[TKey],
+	keyMarkFunc memstruct.KeyMarkRetriever[TKey],
 ) (memcore.MarkRaw, *memstruct.HashMap[TKey, TValue]) {
 	hashMapSize := memstruct.HashMapRequiredBytesGet[TKey, TValue](capacityElements)
 	hashMapAlignment := memstruct.HashMapRequiredAlignmentGet[TKey, TValue]()
 
 	addr := allocFn(hashMapSize, hashMapAlignment)
-	memstruct.HashMapInitializeAt[TKey, TValue](addr, capacityElements, keyComparisonFunc)
+	memstruct.HashMapInitializeAt[TKey, TValue](addr, capacityElements, keyComparisonFunc, keyMarkFunc)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
 }
