@@ -37,6 +37,17 @@ func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Stack[T]](addr)
 }
 
+// MemArchQueueCreate creates an instance of a queue for type T using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchQueueCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Queue[T]) {
+	queueSize := memstruct.QueueRequiredBytesGet[T](capacityElements)
+	queueAlignment := memstruct.QueueRequiredAlignmentGet[T]()
+
+	addr := allocFn(queueSize, queueAlignment)
+	memstruct.QueueInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Queue[T]](addr)
+}
+
 // MemArchFixedOrderedListCreate creates an instance of a fixed ordered for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.FixedOrderedList[T]) {
