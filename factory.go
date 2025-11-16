@@ -26,6 +26,19 @@ func MemArchArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
 }
 
+// MemArchArrayCreateFrom creates an instance of an array for type T using the provided allocation method.
+// This variant stores the items of Array A into Array B upon initialization.
+// The capacity must be >= length of Array A
+// Do not store Go pointers inside manually managed memory.
+func MemArchArrayCreateFrom[T any](allocFn AllocationFn, capacityElements uint64, srcArray memcore.MarkRaw) (memcore.MarkRaw, *memstruct.Array[T]) {
+	arraySize := memstruct.ArrayRequiredBytesGet[T](capacityElements)
+	arrayAlignment := memstruct.ArrayRequiredAlignmentGet[T]()
+
+	addr := allocFn(arraySize, arrayAlignment)
+	memstruct.ArrayInitializeFrom[T](addr, srcArray, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
+}
+
 // MemArchStackCreate creates an instance of a stack for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Stack[T]) {
