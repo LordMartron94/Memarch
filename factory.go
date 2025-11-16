@@ -79,7 +79,20 @@ func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityEle
 	vectorAlignment := memstruct.VectorRequiredAlignmentGet[T]()
 
 	addr := allocFn(vectorSize, vectorAlignment)
-	memstruct.ArrayInitializeAt[T](addr, capacityElements)
+	memstruct.VectorInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+}
+
+// MemArchVectorCreateFrom creates an instance of a vector for type T using the provided allocation method.
+// This variant stores the items of Vector A into Vector B upon initialization.
+// The capacity must be >= length of Vector A
+// Do not store Go pointers inside manually managed memory.
+func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src memcore.MarkRaw, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
+	vectorSize := memstruct.VectorRequiredBytesGet[T](capacityElements)
+	vectorAlignment := memstruct.VectorRequiredAlignmentGet[T]()
+
+	addr := allocFn(vectorSize, vectorAlignment)
+	memstruct.VectorInitializeFrom[T](addr, src, capacityElements)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
 }
 
