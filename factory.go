@@ -72,6 +72,19 @@ func MemArchPriorityQueueCreate[T any](allocFn AllocationFn, capacityElements ui
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
 }
 
+// MemArchPriorityQueueCreateFrom creates an instance of a priority queue for type T using the provided allocation method.
+// This variant stores the items of queue A into queue B upon initialization.
+// The capacity must be >= length of queue A
+// Do not store Go pointers inside manually managed memory.
+func MemArchPriorityQueueCreateFrom[T any](allocFn AllocationFn, capacityElements uint64, srcQueue memcore.MarkRaw) (memcore.MarkRaw, *memstruct.PriorityQueue[T]) {
+	queueSize := memstruct.PriorityQueueRequiredBytesGet[T](capacityElements)
+	queueAlignment := memstruct.PriorityQueueRequiredAlignmentGet[T]()
+
+	addr := allocFn(queueSize, queueAlignment)
+	memstruct.PriorityQueueInitializeFrom[T](addr, srcQueue, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
+}
+
 // MemArchFixedOrderedListCreate creates an instance of a fixed ordered for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.FixedOrderedList[T]) {
