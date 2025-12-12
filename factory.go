@@ -120,6 +120,30 @@ func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
 }
 
+// MemArchMatrixCreate creates an instance of a matrix for type T using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchMatrixCreate[T foundation.Numeric](allocFn AllocationFn, capacityRows, capacityCols uint64) (memcore.MarkRaw, *memstruct.Matrix[T]) {
+	matrixSize := memstruct.MatrixRequiredBytesGet[T](capacityRows, capacityCols)
+	matrixAlignment := memstruct.MatrixRequiredAlignmentGet[T]()
+
+	addr := allocFn(matrixSize, matrixAlignment)
+	memstruct.MatrixInitializeAt[T](addr, capacityRows, capacityCols)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+}
+
+// MemArchMatrixCreateFrom creates an instance of a matrix for type T using the provided allocation method.
+// This variant stores the items of Matrix A into Matrix B upon initialization.
+// The capacity must be >= length of Matrix A
+// Do not store Go pointers inside manually managed memory.
+func MemArchMatrixCreateFrom[T foundation.Numeric](allocFn AllocationFn, src memcore.MarkRaw, capacityRows, capacityCols uint64) (memcore.MarkRaw, *memstruct.Matrix[T]) {
+	matrixSize := memstruct.MatrixRequiredBytesGet[T](capacityRows, capacityCols)
+	matrixAlignment := memstruct.MatrixRequiredAlignmentGet[T]()
+
+	addr := allocFn(matrixSize, matrixAlignment)
+	memstruct.MatrixInitializeFrom[T](addr, src, capacityRows, capacityCols)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+}
+
 // MemArchStringCreate creates an instance of a string using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *memstruct.String) {
