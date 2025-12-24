@@ -170,3 +170,14 @@ func MemArchHashMapCreate[TKey, TValue any](
 	memstruct.HashMapInitializeAt[TKey, TValue](addr, capacityElements, keyComparisonFunc, keyMarkFunc)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
 }
+
+// MemArchCircularBufferCreate creates an instance of a circular buffer for type T using the provided allocation method.
+// Do not store Go pointers inside manually managed memory.
+func MemArchCircularBufferCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.CircularBuffer[T]) {
+	bufferSize := memstruct.CircularBufferRequiredBytesGet[T](capacityElements)
+	bufferAlignment := memstruct.CircularBufferRequiredAlignmentGet[T]()
+
+	addr := allocFn(bufferSize, bufferAlignment)
+	memstruct.CircularBufferInitializeAt[T](addr, capacityElements)
+	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.CircularBuffer[T]](addr)
+}
