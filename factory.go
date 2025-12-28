@@ -39,6 +39,54 @@ func MemArchArrayCreateFrom[T any](allocFn AllocationFn, capacityElements uint64
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
 }
 
+/*
+MemArchArrayCreateWithSeparatedData creates an array instance with the header allocated from RAM
+and the data region provided at a separate memory address.
+
+This function is designed for use cases where the data region comes from a different memory source
+than the header, such as memory-mapped files, shared memory, or pre-allocated data buffers. The
+header is allocated using the provided allocation function (typically from RAM), while the data
+address is provided directly by the caller.
+
+Use cases:
+- Memory-mapped files where data is mapped from disk and header is in RAM
+- Shared memory scenarios where data is in a shared region
+- Pre-allocated data buffers that need array metadata management
+- Memory pools with separate header and data allocation strategies
+
+Time complexity: O(1) - constant time allocation and initialization
+Space complexity: O(1) - only header is allocated (data is provided externally)
+
+Prerequisites:
+- headerAllocFn must be a valid allocation function
+- dataAddr must point to a valid, properly aligned memory address for the data region
+- The data region must have sufficient capacity for the specified number of elements
+- dataAddr must be within memory managed by memcore
+
+Edge cases:
+- dataAddr can be located before or after the header in memory (offset can be negative or positive)
+- The header and data can be in completely separate memory regions
+- The data region size must match capacityElements * sizeof(T)
+
+Additional notes:
+- Only the header is allocated using headerAllocFn; data is not allocated
+- The caller is responsible for ensuring dataAddr is valid and properly aligned
+- This allows for flexible memory layouts where header and data are managed separately
+- Do not store Go pointers inside manually managed memory
+*/
+func MemArchArrayCreateWithSeparatedData[T any](
+	headerAllocFn AllocationFn,
+	dataAddr memcore.MarkRaw,
+	capacityElements uint64,
+) (memcore.MarkRaw, *memstruct.Array[T]) {
+	headerSize := memstruct.ArrayHeaderRequiredBytesGet[T]()
+	headerAlignment := memstruct.ArrayHeaderRequiredAlignmentGet[T]()
+
+	headerAddr := headerAllocFn(headerSize, headerAlignment)
+	memstruct.ArrayInitializeWithSeparatedHeaderAndData[T](headerAddr, dataAddr, capacityElements)
+	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+}
+
 // MemArchStackCreate creates an instance of a stack for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Stack[T]) {
@@ -118,6 +166,57 @@ func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 	addr := allocFn(vectorSize, vectorAlignment)
 	memstruct.VectorInitializeFrom[T](addr, src, capacityElements)
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+}
+
+/*
+MemArchVectorCreateWithSeparatedData creates a vector instance with the header allocated from RAM
+and the data region provided at a separate memory address.
+
+This function is designed for use cases where the data region comes from a different memory source
+than the header, such as memory-mapped files, shared memory, or pre-allocated data buffers. The
+header is allocated using the provided allocation function (typically from RAM), while the data
+address is provided directly by the caller.
+
+Use cases:
+- Memory-mapped files where data is mapped from disk and header is in RAM
+- Shared memory scenarios where data is in a shared region
+- Pre-allocated data buffers that need vector metadata management
+- Memory pools with separate header and data allocation strategies
+- Numerical computing scenarios with large datasets in memory-mapped files
+
+Time complexity: O(1) - constant time allocation and initialization
+Space complexity: O(1) - only header is allocated (data is provided externally)
+
+Prerequisites:
+- headerAllocFn must be a valid allocation function
+- dataAddr must point to a valid, properly aligned memory address for the data region
+- The data region must have sufficient capacity for the specified number of elements
+- dataAddr must be within memory managed by memcore
+- Type T must be a numeric type (foundation.Numeric)
+
+Edge cases:
+- dataAddr can be located before or after the header in memory (offset can be negative or positive)
+- The header and data can be in completely separate memory regions
+- The data region size must match capacityElements * sizeof(T)
+
+Additional notes:
+- Only the header is allocated using headerAllocFn; data is not allocated
+- The caller is responsible for ensuring dataAddr is valid and properly aligned
+- This allows for flexible memory layouts where header and data are managed separately
+- Do not store Go pointers inside manually managed memory
+- Internally wraps MemArchArrayCreateWithSeparatedData for numeric types
+*/
+func MemArchVectorCreateWithSeparatedData[T foundation.Numeric](
+	headerAllocFn AllocationFn,
+	dataAddr memcore.MarkRaw,
+	capacityElements uint64,
+) (memcore.MarkRaw, *memstruct.Vector[T]) {
+	headerSize := memstruct.VectorHeaderRequiredBytesGet[T]()
+	headerAlignment := memstruct.VectorHeaderRequiredAlignmentGet[T]()
+
+	headerAddr := headerAllocFn(headerSize, headerAlignment)
+	memstruct.VectorInitializeWithSeparatedHeaderAndData[T](headerAddr, dataAddr, capacityElements)
+	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
 }
 
 // MemArchMatrixCreate creates an instance of a matrix for type T using the provided allocation method.
