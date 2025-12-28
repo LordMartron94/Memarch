@@ -87,6 +87,53 @@ func MemArchArrayCreateWithSeparatedData[T any](
 	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
 }
 
+/*
+MemArchArrayCreateHeaderOnly creates an array instance with only the header allocated, no data region.
+
+This function allocates only the header structure for an array, without allocating the data region.
+The header is left uninitialized and must be bound to data using BinaryStoreFixedBindAt or similar
+before use. This is useful when the data is stored in memory-mapped files, shared memory, or other
+external storage where the data region is not managed by the allocator.
+
+Use cases:
+- Memory-mapped files where data is mapped from disk and header is in RAM
+- Cursor-based iteration where headers are reused and rebound to different data locations
+- Memory-efficient scenarios where data is stored separately from headers
+- Avoiding unnecessary data region allocation when data is external
+
+Time complexity: O(1) - constant time allocation only
+Space complexity: O(1) - only header is allocated (data is provided externally)
+
+Prerequisites:
+- headerAllocFn must be a valid allocation function
+- Header must be bound to data using BinaryStoreFixedBindAt or similar before use
+- The data region must exist externally (memory-mapped file, shared memory, etc.)
+
+Edge cases:
+- Header is uninitialized (zero values) and must be bound before use
+- No data region is allocated - data must be provided externally
+- Capacity is specified but data region is not allocated
+
+Additional notes:
+- Only the header is allocated using headerAllocFn; no data region is allocated
+- The header must be bound to external data before it can be used
+- More memory-efficient than MemArchArrayCreate when data is stored separately
+- Designed for use with BinaryStoreFixedBindAt and cursor-based iteration
+- Do not store Go pointers inside manually managed memory
+*/
+func MemArchArrayCreateHeaderOnly[T any](
+	headerAllocFn AllocationFn,
+	capacityElements uint64,
+) (memcore.MarkRaw, *memstruct.Array[T]) {
+	headerSize := memstruct.ArrayHeaderRequiredBytesGet[T]()
+	headerAlignment := memstruct.ArrayHeaderRequiredAlignmentGet[T]()
+
+	headerAddr := headerAllocFn(headerSize, headerAlignment)
+	// Header is left uninitialized - it will be properly initialized when bound
+	// via BinaryStoreFixedBindAt or similar functions
+	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+}
+
 // MemArchStackCreate creates an instance of a stack for type T using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Stack[T]) {
@@ -216,6 +263,51 @@ func MemArchVectorCreateWithSeparatedData[T foundation.Numeric](
 
 	headerAddr := headerAllocFn(headerSize, headerAlignment)
 	memstruct.VectorInitializeWithSeparatedHeaderAndData[T](headerAddr, dataAddr, capacityElements)
+	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
+}
+
+/*
+MemArchVectorCreateHeaderOnly creates a vector instance with only the header allocated, no data region.
+
+This function allocates only the header structure for a vector, without allocating the data region.
+The header is left uninitialized and must be bound to data using BinaryStoreFixedBindAt or similar
+before use. This is useful when the data is stored in memory-mapped files, shared memory, or other
+external storage where the data region is not managed by the allocator.
+
+Use cases:
+- Memory-mapped files where data is mapped from disk and header is in RAM
+- Cursor-based iteration where headers are reused and rebound to different data locations
+- Memory-efficient scenarios where data is stored separately from headers
+- Avoiding unnecessary data region allocation when data is external
+- Numerical computing scenarios with large datasets in memory-mapped files
+
+Time complexity: O(1) - constant time allocation only
+Space complexity: O(1) - only header is allocated (data is provided externally)
+
+Prerequisites:
+- headerAllocFn must be a valid allocation function
+- Header must be bound to data using BinaryStoreFixedBindAt or similar before use
+- The data region must exist externally (memory-mapped file, shared memory, etc.)
+- Type T must be a numeric type (foundation.Numeric)
+
+Edge cases:
+- Header is uninitialized (zero values) and must be bound before use
+- No data region is allocated - data must be provided externally
+- Capacity is specified but data region is not allocated
+
+Additional notes:
+- Only the header is allocated using headerAllocFn; no data region is allocated
+- The header must be bound to external data before it can be used
+- More memory-efficient than MemArchVectorCreate when data is stored separately
+- Designed for use with BinaryStoreFixedBindAt and cursor-based iteration
+- Internally wraps MemArchArrayCreateHeaderOnly for numeric types
+- Do not store Go pointers inside manually managed memory
+*/
+func MemArchVectorCreateHeaderOnly[T foundation.Numeric](
+	headerAllocFn AllocationFn,
+	capacityElements uint64,
+) (memcore.MarkRaw, *memstruct.Vector[T]) {
+	headerAddr, _ := MemArchArrayCreateHeaderOnly[T](headerAllocFn, capacityElements)
 	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
 }
 
