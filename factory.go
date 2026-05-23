@@ -346,6 +346,26 @@ func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw,
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.String](addr)
 }
 
+/*
+MemArchGoStringCreate allocates a native Go string in manual memory.
+
+The returned *string and its internal data pointer both reference only the manual allocation;
+no Go heap pointers are stored in the region. Use this when APIs require a Go string value
+rather than memstruct.String. If the memory region is relocated, the string data pointer
+must be updated.
+
+Time complexity: O(n) where n is len(content)
+Space complexity: O(n)
+*/
+func MemArchGoStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *string) {
+	stringSize := memstruct.GoStringRequiredBytesGet(content)
+	stringAlignment := memstruct.GoStringRequiredAlignmentGet()
+
+	addr := allocFn(stringSize, stringAlignment)
+	memstruct.GoStringInitializeAt(addr, content)
+	return addr, memcore.MemcoreMarkDereferenceObject[string](addr)
+}
+
 // MemArchHashMapCreate creates an instance of a hashmap using the provided allocation method.
 // Do not store Go pointers inside manually managed memory.
 func MemArchHashMapCreate[TKey, TValue any](

@@ -126,7 +126,12 @@ mark, matrix := memarch.MemArchMatrixCreateFrom[T](allocFn, rows, cols, srcMatri
 ### String
 
 ```go
+// memstruct.String (offset-based header; relocation-safe data pointer)
 mark, str := memarch.MemArchStringCreate(allocFn, "Hello, World!")
+
+// Native Go string (runtime string type; data pointer targets manual memory in the same allocation)
+mark, goStr := memarch.MemArchGoStringCreate(allocFn, "Hello, World!")
+_ = *goStr
 ```
 
 ### HashMap
