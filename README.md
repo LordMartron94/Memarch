@@ -138,6 +138,22 @@ mark, cStr := memarch.MemArchCStringCreate(allocFn, "Hello, World!")
 _ = cStr
 ```
 
+### Single values (structs and primitives)
+
+For one-off structs, numeric out-parameters, or other standard types, use value allocation
+instead of a one-element memstruct array:
+
+```go
+mark, value := memarch.MemArchValueCreate[MyStruct](allocFn)
+value.Field = ...
+
+size := memarch.MemArchValueRequiredBytesGet[MyStruct]()
+align := memarch.MemArchValueRequiredAlignmentGet[MyStruct]()
+```
+
+Whether the slot is zero-initialized is determined by allocFn (wrap memforge `Calloc` when you need
+cleared memory, `Malloc` when the caller writes every byte before native use).
+
 ### HashMap
 
 ```go
