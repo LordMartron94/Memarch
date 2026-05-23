@@ -129,9 +129,13 @@ mark, matrix := memarch.MemArchMatrixCreateFrom[T](allocFn, rows, cols, srcMatri
 // memstruct.String (offset-based header; relocation-safe data pointer)
 mark, str := memarch.MemArchStringCreate(allocFn, "Hello, World!")
 
-// Native Go string (runtime string type; data pointer targets manual memory in the same allocation)
+// Native Go string (runtime string type; header pointer targets manual payload in same allocation)
 mark, goStr := memarch.MemArchGoStringCreate(allocFn, "Hello, World!")
 _ = *goStr
+
+// NUL-terminated C string for C-ABI / FFI (*byte → const char* / char*)
+mark, cStr := memarch.MemArchCStringCreate(allocFn, "Hello, World!")
+_ = cStr
 ```
 
 ### HashMap
@@ -248,7 +252,7 @@ For most applications, create allocators with `memforge`, wrap them as `Allocati
 
 ⚠️ All safety guidelines from `memstruct` and `memforge` apply:
 
-- Never store Go pointers in manually managed memory
+- Never store pointers to **Go heap-managed memory** in manually managed regions (this corrupts the GC). Manual memory may still hold pointer *values* that refer only to manual allocations—for example the data pointer inside a native Go string from `MemArchGoStringCreate`, or the `*byte` from `MemArchCStringCreate`.
 - Ensure allocators outlive their data structures
 - Use the returned `MarkRaw` values, not raw pointers, for long-term storage
 - Be aware of allocator reset/destroy behavior

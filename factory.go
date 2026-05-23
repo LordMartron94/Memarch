@@ -13,6 +13,10 @@ import (
 //
 // For safety it is best to wrap your actual allocation function so you can catch and handle errors
 // where they occur.
+//
+// "No Go pointers" warnings on factory functions mean pointers to Go heap-managed memory (GC-scanned
+// allocations). Manual memory may store pointer values and addresses that refer only to manual
+// regions (for example native Go string headers or C string *byte values).
 type AllocationFn func(sizeBytes, alignment uint64) memcore.MarkRaw
 
 // MemArchArrayCreate creates an instance of an array for type T using the provided allocation method.
@@ -349,10 +353,10 @@ func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw,
 /*
 MemArchGoStringCreate allocates a native Go string in manual memory.
 
-The returned *string and its internal data pointer both reference only the manual allocation;
-no Go heap pointers are stored in the region. Use this when APIs require a Go string value
-rather than memstruct.String. If the memory region is relocated, the string data pointer
-must be updated.
+The returned *string and its internal data pointer refer only to the manual allocation. The data
+pointer is a pointer value, not a reference to Go heap-managed memory. Use this when APIs require
+a Go string value rather than memstruct.String. If the memory region is relocated, the string data
+pointer must be updated.
 
 Time complexity: O(n) where n is len(content)
 Space complexity: O(n)
@@ -364,6 +368,25 @@ func MemArchGoStringCreate(allocFn AllocationFn, content string) (memcore.MarkRa
 	addr := allocFn(stringSize, stringAlignment)
 	memstruct.GoStringInitializeAt(addr, content)
 	return addr, memcore.MemcoreMarkDereferenceObject[string](addr)
+}
+
+/*
+MemArchCStringCreate allocates a NUL-terminated UTF-8 C string in manual memory.
+
+The returned *byte is suitable for C-ABI and FFI (const char*, char*). The allocation contains
+only bytes plus a trailing 0x00; no Go string header is stored. For a native Go string in manual
+memory, use MemArchGoStringCreate instead.
+
+Time complexity: O(n) where n is len(content)
+Space complexity: O(n)
+*/
+func MemArchCStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *byte) {
+	stringSize := memstruct.CStringRequiredBytesGet(content)
+	stringAlignment := memstruct.CStringRequiredAlignmentGet()
+
+	addr := allocFn(stringSize, stringAlignment)
+	memstruct.CStringInitializeAt(addr, content)
+	return addr, memstruct.CStringPointerGet(addr)
 }
 
 // MemArchHashMapCreate creates an instance of a hashmap using the provided allocation method.
