@@ -1,5 +1,11 @@
-// Package memarch provides data structures to be used.
-// It internally wraps memstruct and memforge.
+/*
+Package memarch provides factory functions that allocate and initialize memstruct containers in manual memory.
+
+[Context]
+Each factory takes an AllocationFn (typically a memforge Malloc or Calloc wrapper) and returns both
+a memcore.MarkRaw and a typed pointer view. Containers live outside the Go heap until the allocator
+is destroyed or reset.
+*/
 package memarch
 
 import (
@@ -8,19 +14,36 @@ import (
 	"memstruct"
 )
 
-// AllocationFn represents the allocation function to use for the creation of a data structure.
-// This can be Malloc or Calloc for any given allocator.
-//
-// For safety it is best to wrap your actual allocation function so you can catch and handle errors
-// where they occur.
-//
-// "No Go pointers" warnings on factory functions mean pointers to Go heap-managed memory (GC-scanned
-// allocations). Manual memory may store pointer values and addresses that refer only to manual
-// regions (for example native Go string headers or C string *byte values).
+/*
+AllocationFn allocates a manual region of sizeBytes with alignment and returns its mark.
+
+[Context]
+Pass memforge allocator wrappers (Malloc/Calloc). Wrap the underlying allocator to translate panics
+into errors at application boundaries when desired.
+
+[Invariants]
+"Do not store Go pointers" on factory functions means pointers to Go heap-managed (GC-scanned) memory.
+Manual regions may hold pointer values and addresses that refer only to other manual regions (for
+example native string headers or C string *byte values).
+*/
 type AllocationFn func(sizeBytes, alignment uint64) memcore.MarkRaw
 
-// MemArchArrayCreate creates an instance of an array for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchArrayCreate allocates and initializes a memstruct.Array[T] with the given capacity.
+
+[Parameters]
+allocFn - Must not be nil.
+capacityElements - Reserved element slots.
+
+[Returns]
+Mark and *memstruct.Array[T] view.
+
+[Complexity]
+Time: O(1). Space: O(capacityElements * element size) plus header overhead.
+
+[Invariants]
+Do not store Go heap pointers in manually managed memory.
+*/
 func MemArchArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Array[T]) {
 	arraySize := memstruct.ArrayRequiredBytesGet[T](capacityElements)
 	arrayAlignment := memstruct.ArrayRequiredAlignmentGet[T]()
@@ -30,10 +53,15 @@ func MemArchArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
 }
 
-// MemArchArrayCreateFrom creates an instance of an array for type T using the provided allocation method.
-// This variant stores the items of Array A into Array B upon initialization.
-// The capacity must be >= length of Array A
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchArrayCreateFrom allocates an array and copies elements from srcArray.
+
+[Parameters]
+capacityElements - Must be >= the length of srcArray.
+
+[Side Effects]
+Initializes the new array from srcArray via memstruct.ArrayInitializeFrom.
+*/
 func MemArchArrayCreateFrom[T any](allocFn AllocationFn, capacityElements uint64, srcArray memcore.MarkRaw) (memcore.MarkRaw, *memstruct.Array[T]) {
 	arraySize := memstruct.ArrayRequiredBytesGet[T](capacityElements)
 	arrayAlignment := memstruct.ArrayRequiredAlignmentGet[T]()
@@ -44,39 +72,26 @@ func MemArchArrayCreateFrom[T any](allocFn AllocationFn, capacityElements uint64
 }
 
 /*
-MemArchArrayCreateWithSeparatedData creates an array instance with the header allocated from RAM
-and the data region provided at a separate memory address.
+MemArchArrayCreateWithSeparatedData allocates only the array header; data lives at dataAddr.
 
-This function is designed for use cases where the data region comes from a different memory source
-than the header, such as memory-mapped files, shared memory, or pre-allocated data buffers. The
-header is allocated using the provided allocation function (typically from RAM), while the data
-address is provided directly by the caller.
+[Context]
+Use when the element storage is mmap-backed, shared memory, or pre-allocated separately from the header.
 
-Use cases:
-- Memory-mapped files where data is mapped from disk and header is in RAM
-- Shared memory scenarios where data is in a shared region
-- Pre-allocated data buffers that need array metadata management
-- Memory pools with separate header and data allocation strategies
+[Parameters]
+headerAllocFn - Allocates the header in RAM (or another allocator).
+dataAddr - Mark to the external data region with capacity for capacityElements items.
 
-Time complexity: O(1) - constant time allocation and initialization
-Space complexity: O(1) - only header is allocated (data is provided externally)
+[Returns]
+Mark and *memstruct.Array[T] with header bound to dataAddr.
 
-Prerequisites:
-- headerAllocFn must be a valid allocation function
-- dataAddr must point to a valid, properly aligned memory address for the data region
-- The data region must have sufficient capacity for the specified number of elements
-- dataAddr must be within memory managed by memcore
+[Complexity]
+Time: O(1). Space: O(header only); data is not allocated here.
 
-Edge cases:
-- dataAddr can be located before or after the header in memory (offset can be negative or positive)
-- The header and data can be in completely separate memory regions
-- The data region size must match capacityElements * sizeof(T)
+[Edge Cases]
+dataAddr may lie before or after the header; the data span must hold capacityElements * sizeof(T).
 
-Additional notes:
-- Only the header is allocated using headerAllocFn; data is not allocated
-- The caller is responsible for ensuring dataAddr is valid and properly aligned
-- This allows for flexible memory layouts where header and data are managed separately
-- Do not store Go pointers inside manually managed memory
+[Invariants]
+Caller must keep dataAddr valid and aligned. Do not store Go heap pointers in manual memory.
 */
 func MemArchArrayCreateWithSeparatedData[T any](
 	headerAllocFn AllocationFn,
@@ -92,38 +107,23 @@ func MemArchArrayCreateWithSeparatedData[T any](
 }
 
 /*
-MemArchArrayCreateHeaderOnly creates an array instance with only the header allocated, no data region.
+MemArchArrayCreateHeaderOnly allocates an uninitialized array header with no data region.
 
-This function allocates only the header structure for an array, without allocating the data region.
-The header is left uninitialized and must be bound to data using BinaryStoreFixedBindAt or similar
-before use. This is useful when the data is stored in memory-mapped files, shared memory, or other
-external storage where the data region is not managed by the allocator.
+[Context]
+Bind external data later (for example via BinaryStoreFixedBindAt). Useful for mmap files and
+cursor-driven header reuse.
 
-Use cases:
-- Memory-mapped files where data is mapped from disk and header is in RAM
-- Cursor-based iteration where headers are reused and rebound to different data locations
-- Memory-efficient scenarios where data is stored separately from headers
-- Avoiding unnecessary data region allocation when data is external
+[Parameters]
+capacityElements - Declared capacity once data is bound.
 
-Time complexity: O(1) - constant time allocation only
-Space complexity: O(1) - only header is allocated (data is provided externally)
+[Returns]
+Mark and *memstruct.Array[T]; header is zeroed until bound.
 
-Prerequisites:
-- headerAllocFn must be a valid allocation function
-- Header must be bound to data using BinaryStoreFixedBindAt or similar before use
-- The data region must exist externally (memory-mapped file, shared memory, etc.)
+[Complexity]
+Time: O(1). Space: O(header only).
 
-Edge cases:
-- Header is uninitialized (zero values) and must be bound before use
-- No data region is allocated - data must be provided externally
-- Capacity is specified but data region is not allocated
-
-Additional notes:
-- Only the header is allocated using headerAllocFn; no data region is allocated
-- The header must be bound to external data before it can be used
-- More memory-efficient than MemArchArrayCreate when data is stored separately
-- Designed for use with BinaryStoreFixedBindAt and cursor-based iteration
-- Do not store Go pointers inside manually managed memory
+[Invariants]
+Must bind data before use. Do not store Go heap pointers in manual memory.
 */
 func MemArchArrayCreateHeaderOnly[T any](
 	headerAllocFn AllocationFn,
@@ -133,13 +133,12 @@ func MemArchArrayCreateHeaderOnly[T any](
 	headerAlignment := memstruct.ArrayHeaderRequiredAlignmentGet[T]()
 
 	headerAddr := headerAllocFn(headerSize, headerAlignment)
-	// Header is left uninitialized - it will be properly initialized when bound
-	// via BinaryStoreFixedBindAt or similar functions
 	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
 }
 
-// MemArchStackCreate creates an instance of a stack for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchStackCreate allocates and initializes a memstruct.Stack[T].
+*/
 func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Stack[T]) {
 	stackSize := memstruct.StackRequiredBytesGet[T](capacityElements)
 	stackAlignment := memstruct.StackRequiredAlignmentGet[T]()
@@ -149,8 +148,9 @@ func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Stack[T]](addr)
 }
 
-// MemArchQueueCreate creates an instance of a queue for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchQueueCreate allocates and initializes a memstruct.Queue[T].
+*/
 func MemArchQueueCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Queue[T]) {
 	queueSize := memstruct.QueueRequiredBytesGet[T](capacityElements)
 	queueAlignment := memstruct.QueueRequiredAlignmentGet[T]()
@@ -160,8 +160,9 @@ func MemArchQueueCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Queue[T]](addr)
 }
 
-// MemArchPriorityQueueCreate creates an instance of a priority queue for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchPriorityQueueCreate allocates and initializes a memstruct.PriorityQueue[T].
+*/
 func MemArchPriorityQueueCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.PriorityQueue[T]) {
 	queueSize := memstruct.PriorityQueueRequiredBytesGet[T](capacityElements)
 	queueAlignment := memstruct.PriorityQueueRequiredAlignmentGet[T]()
@@ -171,10 +172,12 @@ func MemArchPriorityQueueCreate[T any](allocFn AllocationFn, capacityElements ui
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
 }
 
-// MemArchPriorityQueueCreateFrom creates an instance of a priority queue for type T using the provided allocation method.
-// This variant stores the items of queue A into queue B upon initialization.
-// The capacity must be >= length of queue A
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchPriorityQueueCreateFrom allocates a priority queue and copies elements from srcQueue.
+
+[Parameters]
+capacityElements - Must be >= the length of srcQueue.
+*/
 func MemArchPriorityQueueCreateFrom[T any](allocFn AllocationFn, capacityElements uint64, srcQueue memcore.MarkRaw) (memcore.MarkRaw, *memstruct.PriorityQueue[T]) {
 	queueSize := memstruct.PriorityQueueRequiredBytesGet[T](capacityElements)
 	queueAlignment := memstruct.PriorityQueueRequiredAlignmentGet[T]()
@@ -184,8 +187,9 @@ func MemArchPriorityQueueCreateFrom[T any](allocFn AllocationFn, capacityElement
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
 }
 
-// MemArchFixedOrderedListCreate creates an instance of a fixed ordered for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchFixedOrderedListCreate allocates and initializes a memstruct.FixedOrderedList[T].
+*/
 func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.FixedOrderedList[T]) {
 	requiredSize := memstruct.FixedOrderedListRequiredBytes[T](capacityElements)
 	requiredAlignment := memstruct.FixedOrderedListRequiredAlignment[T]()
@@ -195,8 +199,9 @@ func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[T]](addr)
 }
 
-// MemArchVectorCreate creates an instance of a vector for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchVectorCreate allocates and initializes a memstruct.Vector[T] for numeric T.
+*/
 func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
 	vectorSize := memstruct.VectorRequiredBytesGet[T](capacityElements)
 	vectorAlignment := memstruct.VectorRequiredAlignmentGet[T]()
@@ -206,10 +211,12 @@ func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityEle
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
 }
 
-// MemArchVectorCreateFrom creates an instance of a vector for type T using the provided allocation method.
-// This variant stores the items of Vector A into Vector B upon initialization.
-// The capacity must be >= length of Vector A
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchVectorCreateFrom allocates a vector and copies elements from src.
+
+[Parameters]
+capacityElements - Must be >= the length of src.
+*/
 func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src memcore.MarkRaw, capacityElements uint64) (memcore.MarkRaw, *memstruct.Vector[T]) {
 	vectorSize := memstruct.VectorRequiredBytesGet[T](capacityElements)
 	vectorAlignment := memstruct.VectorRequiredAlignmentGet[T]()
@@ -220,42 +227,13 @@ func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 }
 
 /*
-MemArchVectorCreateWithSeparatedData creates a vector instance with the header allocated from RAM
-and the data region provided at a separate memory address.
+MemArchVectorCreateWithSeparatedData allocates a vector header bound to external numeric data at dataAddr.
 
-This function is designed for use cases where the data region comes from a different memory source
-than the header, such as memory-mapped files, shared memory, or pre-allocated data buffers. The
-header is allocated using the provided allocation function (typically from RAM), while the data
-address is provided directly by the caller.
+[Context]
+Same layout strategy as MemArchArrayCreateWithSeparatedData; T must satisfy foundation.Numeric.
 
-Use cases:
-- Memory-mapped files where data is mapped from disk and header is in RAM
-- Shared memory scenarios where data is in a shared region
-- Pre-allocated data buffers that need vector metadata management
-- Memory pools with separate header and data allocation strategies
-- Numerical computing scenarios with large datasets in memory-mapped files
-
-Time complexity: O(1) - constant time allocation and initialization
-Space complexity: O(1) - only header is allocated (data is provided externally)
-
-Prerequisites:
-- headerAllocFn must be a valid allocation function
-- dataAddr must point to a valid, properly aligned memory address for the data region
-- The data region must have sufficient capacity for the specified number of elements
-- dataAddr must be within memory managed by memcore
-- Type T must be a numeric type (foundation.Numeric)
-
-Edge cases:
-- dataAddr can be located before or after the header in memory (offset can be negative or positive)
-- The header and data can be in completely separate memory regions
-- The data region size must match capacityElements * sizeof(T)
-
-Additional notes:
-- Only the header is allocated using headerAllocFn; data is not allocated
-- The caller is responsible for ensuring dataAddr is valid and properly aligned
-- This allows for flexible memory layouts where header and data are managed separately
-- Do not store Go pointers inside manually managed memory
-- Internally wraps MemArchArrayCreateWithSeparatedData for numeric types
+[Complexity]
+Time: O(1). Space: O(header only).
 */
 func MemArchVectorCreateWithSeparatedData[T foundation.Numeric](
 	headerAllocFn AllocationFn,
@@ -271,41 +249,10 @@ func MemArchVectorCreateWithSeparatedData[T foundation.Numeric](
 }
 
 /*
-MemArchVectorCreateHeaderOnly creates a vector instance with only the header allocated, no data region.
+MemArchVectorCreateHeaderOnly allocates an uninitialized vector header for later data binding.
 
-This function allocates only the header structure for a vector, without allocating the data region.
-The header is left uninitialized and must be bound to data using BinaryStoreFixedBindAt or similar
-before use. This is useful when the data is stored in memory-mapped files, shared memory, or other
-external storage where the data region is not managed by the allocator.
-
-Use cases:
-- Memory-mapped files where data is mapped from disk and header is in RAM
-- Cursor-based iteration where headers are reused and rebound to different data locations
-- Memory-efficient scenarios where data is stored separately from headers
-- Avoiding unnecessary data region allocation when data is external
-- Numerical computing scenarios with large datasets in memory-mapped files
-
-Time complexity: O(1) - constant time allocation only
-Space complexity: O(1) - only header is allocated (data is provided externally)
-
-Prerequisites:
-- headerAllocFn must be a valid allocation function
-- Header must be bound to data using BinaryStoreFixedBindAt or similar before use
-- The data region must exist externally (memory-mapped file, shared memory, etc.)
-- Type T must be a numeric type (foundation.Numeric)
-
-Edge cases:
-- Header is uninitialized (zero values) and must be bound before use
-- No data region is allocated - data must be provided externally
-- Capacity is specified but data region is not allocated
-
-Additional notes:
-- Only the header is allocated using headerAllocFn; no data region is allocated
-- The header must be bound to external data before it can be used
-- More memory-efficient than MemArchVectorCreate when data is stored separately
-- Designed for use with BinaryStoreFixedBindAt and cursor-based iteration
-- Internally wraps MemArchArrayCreateHeaderOnly for numeric types
-- Do not store Go pointers inside manually managed memory
+[Context]
+Wraps MemArchArrayCreateHeaderOnly for numeric T. Bind external data before use.
 */
 func MemArchVectorCreateHeaderOnly[T foundation.Numeric](
 	headerAllocFn AllocationFn,
@@ -315,8 +262,9 @@ func MemArchVectorCreateHeaderOnly[T foundation.Numeric](
 	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
 }
 
-// MemArchMatrixCreate creates an instance of a matrix for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchMatrixCreate allocates and initializes a memstruct.Matrix[T] with the given dimensions.
+*/
 func MemArchMatrixCreate[T foundation.Numeric](allocFn AllocationFn, capacityRows, capacityCols uint64) (memcore.MarkRaw, *memstruct.Matrix[T]) {
 	matrixSize := memstruct.MatrixRequiredBytesGet[T](capacityRows, capacityCols)
 	matrixAlignment := memstruct.MatrixRequiredAlignmentGet[T]()
@@ -326,10 +274,12 @@ func MemArchMatrixCreate[T foundation.Numeric](allocFn AllocationFn, capacityRow
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
 }
 
-// MemArchMatrixCreateFrom creates an instance of a matrix for type T using the provided allocation method.
-// This variant stores the items of Matrix A into Matrix B upon initialization.
-// The capacity must be >= length of Matrix A
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchMatrixCreateFrom allocates a matrix and copies elements from src.
+
+[Parameters]
+capacityRows, capacityCols - Must be >= the corresponding dimensions of src.
+*/
 func MemArchMatrixCreateFrom[T foundation.Numeric](allocFn AllocationFn, src memcore.MarkRaw, capacityRows, capacityCols uint64) (memcore.MarkRaw, *memstruct.Matrix[T]) {
 	matrixSize := memstruct.MatrixRequiredBytesGet[T](capacityRows, capacityCols)
 	matrixAlignment := memstruct.MatrixRequiredAlignmentGet[T]()
@@ -339,8 +289,9 @@ func MemArchMatrixCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
 }
 
-// MemArchStringCreate creates an instance of a string using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchStringCreate allocates a memstruct.String containing content.
+*/
 func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *memstruct.String) {
 	stringSize := memstruct.StringRequiredBytesGet(content)
 	stringAlignment := memstruct.StringRequiredAlignmentGet()
@@ -351,15 +302,23 @@ func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw,
 }
 
 /*
-MemArchGoStringCreate allocates a native Go string in manual memory.
+MemArchGoStringCreate allocates a native Go string header and data in manual memory.
 
-The returned *string and its internal data pointer refer only to the manual allocation. The data
-pointer is a pointer value, not a reference to Go heap-managed memory. Use this when APIs require
-a Go string value rather than memstruct.String. If the memory region is relocated, the string data
-pointer must be updated.
+[Context]
+Use when APIs require a Go string value rather than memstruct.String. If the backing region moves,
+update the string data pointer accordingly.
 
-Time complexity: O(n) where n is len(content)
-Space complexity: O(n)
+[Parameters]
+content - UTF-8 bytes copied into the manual allocation.
+
+[Returns]
+Mark and *string view backed by manual memory.
+
+[Complexity]
+Time: O(len(content)). Space: O(len(content)).
+
+[Invariants]
+The string's data pointer refers to manual memory, not the Go heap.
 */
 func MemArchGoStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *string) {
 	stringSize := memstruct.GoStringRequiredBytesGet(content)
@@ -373,12 +332,14 @@ func MemArchGoStringCreate(allocFn AllocationFn, content string) (memcore.MarkRa
 /*
 MemArchCStringCreate allocates a NUL-terminated UTF-8 C string in manual memory.
 
-The returned *byte is suitable for C-ABI and FFI (const char*, char*). The allocation contains
-only bytes plus a trailing 0x00; no Go string header is stored. For a native Go string in manual
-memory, use MemArchGoStringCreate instead.
+[Context]
+Suitable for C-ABI and FFI (*byte / char*). For a native Go string in manual memory, use MemArchGoStringCreate.
 
-Time complexity: O(n) where n is len(content)
-Space complexity: O(n)
+[Returns]
+Mark and *byte pointing at the first byte of the C string.
+
+[Complexity]
+Time: O(len(content)). Space: O(len(content) + 1) for the terminator.
 */
 func MemArchCStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw, *byte) {
 	stringSize := memstruct.CStringRequiredBytesGet(content)
@@ -389,8 +350,13 @@ func MemArchCStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw
 	return addr, memstruct.CStringPointerGet(addr)
 }
 
-// MemArchHashMapCreate creates an instance of a hashmap using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchHashMapCreate allocates and initializes a memstruct.HashMap[TKey, TValue].
+
+[Parameters]
+keyComparisonFunc, keyMarkFunc - Required memstruct key callbacks for lookup and storage.
+capacityElements - Bucket/table capacity passed to memstruct.HashMapInitializeAt.
+*/
 func MemArchHashMapCreate[TKey, TValue any](
 	allocFn AllocationFn,
 	capacityElements uint64,
@@ -405,8 +371,9 @@ func MemArchHashMapCreate[TKey, TValue any](
 	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
 }
 
-// MemArchCircularBufferCreate creates an instance of a circular buffer for type T using the provided allocation method.
-// Do not store Go pointers inside manually managed memory.
+/*
+MemArchCircularBufferCreate allocates and initializes a memstruct.CircularBuffer[T].
+*/
 func MemArchCircularBufferCreate[T any](allocFn AllocationFn, capacityElements uint64) (memcore.MarkRaw, *memstruct.CircularBuffer[T]) {
 	bufferSize := memstruct.CircularBufferRequiredBytesGet[T](capacityElements)
 	bufferAlignment := memstruct.CircularBufferRequiredAlignmentGet[T]()

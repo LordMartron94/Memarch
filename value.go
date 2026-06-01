@@ -5,10 +5,17 @@ import (
 )
 
 /*
-MemArchValueRequiredBytesGet returns the size in bytes of a single value of type T.
+MemArchValueRequiredBytesGet returns the byte size of a single value of type T.
 
+[Context]
 Use with AllocationFn to size manual allocations for plain structs, numeric out-parameters,
 and other standard types that are not memstruct containers.
+
+[Complexity]
+Time: O(1). Space: O(1).
+
+[Side Effects]
+Pure function.
 */
 func MemArchValueRequiredBytesGet[T any]() uint64 {
 	return memcore.SizeOf[T]()
@@ -16,6 +23,12 @@ func MemArchValueRequiredBytesGet[T any]() uint64 {
 
 /*
 MemArchValueRequiredAlignmentGet returns the required alignment of a single value of type T.
+
+[Complexity]
+Time: O(1). Space: O(1).
+
+[Side Effects]
+Pure function.
 */
 func MemArchValueRequiredAlignmentGet[T any]() uint64 {
 	return memcore.AlignOf[T]()
@@ -24,13 +37,21 @@ func MemArchValueRequiredAlignmentGet[T any]() uint64 {
 /*
 MemArchValueCreate allocates manual memory for one value of type T.
 
-Whether the storage is zero-initialized depends on allocFn (for example a memforge Calloc wrapper
-versus Malloc). The returned pointer refers to the manual region until the owning allocator is
-destroyed or the region is reclaimed. Do not store Go heap pointers inside T when T is written
-into manual memory.
+[Parameters]
+allocFn - Allocator callback; must not be nil. Use a Calloc wrapper for zeroed storage.
 
-Time complexity: O(1)
-Space complexity: O(sizeof(T))
+[Returns]
+A memcore.MarkRaw and a *T view of the same storage.
+
+[Complexity]
+Time: O(1). Space: O(sizeof(T)).
+
+[Errors]
+Panics when allocFn is nil.
+
+[Invariants]
+Do not store Go heap pointers inside T when T resides in manual memory. The mark is valid until
+the owning allocator is destroyed or the region is reclaimed.
 */
 func MemArchValueCreate[T any](allocFn AllocationFn) (memcore.MarkRaw, *T) {
 	if allocFn == nil {
