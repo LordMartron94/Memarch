@@ -152,6 +152,7 @@ func MemArchLayoutBlueprintComponentOffsetGet(blueprint *LayoutBlueprint, compon
 MemArchLayoutBlueprintPushStruct reserves space for a value of type T.
 */
 func MemArchLayoutBlueprintPushStruct[T any](blueprint *LayoutBlueprint) uint64 {
+	memarchManualTypeValidate[T]("MemArchLayoutBlueprintPushStruct")
 	return MemArchLayoutBlueprintPush(blueprint, memcore.SizeOf[T](), memcore.AlignOf[T]())
 }
 

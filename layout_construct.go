@@ -55,8 +55,10 @@ func MemArchLayoutConstructBindStruct[T any](
 	baseMark memcore.MarkRaw,
 	componentIndex uint64,
 ) *T {
+	memarchManualTypeValidate[T]("MemArchLayoutConstructBindStruct")
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
-	return memcore.MemcoreMarkDereferenceObject[T](mark)
+	value := memcore.MemcoreMarkDereferenceObject[T](mark)
+	return value
 }
 
 /*
@@ -70,7 +72,8 @@ func MemArchLayoutConstructBindArray[TElement any](
 ) *memstruct.Array[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.ArrayInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Array[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[TElement]](mark)
+	return value
 }
 
 /*
@@ -84,7 +87,8 @@ func MemArchLayoutConstructBindVector[TElement foundation.Numeric](
 ) *memstruct.Vector[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.VectorInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Vector[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[TElement]](mark)
+	return value
 }
 
 /*
@@ -98,7 +102,8 @@ func MemArchLayoutConstructBindStack[TElement any](
 ) *memstruct.Stack[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.StackInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Stack[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Stack[TElement]](mark)
+	return value
 }
 
 /*
@@ -112,7 +117,8 @@ func MemArchLayoutConstructBindQueue[TElement any](
 ) *memstruct.Queue[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.QueueInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Queue[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Queue[TElement]](mark)
+	return value
 }
 
 /*
@@ -126,7 +132,8 @@ func MemArchLayoutConstructBindPriorityQueue[TElement any](
 ) *memstruct.PriorityQueue[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.PriorityQueueInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[TElement]](mark)
+	return value
 }
 
 /*
@@ -140,7 +147,8 @@ func MemArchLayoutConstructBindFixedOrderedList[TElement any](
 ) *memstruct.FixedOrderedList[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.FixedOrderedListInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[TElement]](mark)
+	return value
 }
 
 /*
@@ -154,7 +162,8 @@ func MemArchLayoutConstructBindCircularBuffer[TElement any](
 ) *memstruct.CircularBuffer[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.CircularBufferInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.CircularBuffer[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.CircularBuffer[TElement]](mark)
+	return value
 }
 
 /*
@@ -168,7 +177,8 @@ func MemArchLayoutConstructBindMatrix[TElement foundation.Numeric](
 ) *memstruct.Matrix[TElement] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.MatrixInitializeAt[TElement](mark, capacityRows, capacityCols)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[TElement]](mark)
+	return value
 }
 
 /*
@@ -184,7 +194,8 @@ func MemArchLayoutConstructBindHashMap[TKey, TValue any](
 ) *memstruct.HashMap[TKey, TValue] {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.HashMapInitializeAt[TKey, TValue](mark, capacityElements, keyComparisonFunc, keyMarkFunc)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](mark)
+	return value
 }
 
 /*
@@ -198,7 +209,8 @@ func MemArchLayoutConstructBindString(
 ) *memstruct.String {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.StringInitializeAt(mark, content)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.String](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.String](mark)
+	return value
 }
 
 /*
@@ -212,7 +224,8 @@ func MemArchLayoutConstructBindGoString(
 ) *string {
 	mark := MemArchLayoutConstructMarkGet(blueprint, baseMark, componentIndex)
 	memstruct.GoStringInitializeAt(mark, content)
-	return memcore.MemcoreMarkDereferenceObject[string](mark)
+	value := memcore.MemcoreMarkDereferenceObject[string](mark)
+	return value
 }
 
 /*
@@ -274,7 +287,8 @@ func MemArchLayoutConstructBindArrayToField[TElement any](
 ) *memstruct.Array[TElement] {
 	mark := MemArchLayoutConstructBindMarkToField(blueprint, baseMark, componentIndex, outTargetField)
 	memstruct.ArrayInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Array[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[TElement]](mark)
+	return value
 }
 
 /*
@@ -289,7 +303,8 @@ func MemArchLayoutConstructBindVectorToField[TElement foundation.Numeric](
 ) *memstruct.Vector[TElement] {
 	mark := MemArchLayoutConstructBindMarkToField(blueprint, baseMark, componentIndex, outTargetField)
 	memstruct.VectorInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Vector[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[TElement]](mark)
+	return value
 }
 
 /*
@@ -304,7 +319,8 @@ func MemArchLayoutConstructBindStackToField[TElement any](
 ) *memstruct.Stack[TElement] {
 	mark := MemArchLayoutConstructBindMarkToField(blueprint, baseMark, componentIndex, outTargetField)
 	memstruct.StackInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Stack[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Stack[TElement]](mark)
+	return value
 }
 
 /*
@@ -319,7 +335,8 @@ func MemArchLayoutConstructBindQueueToField[TElement any](
 ) *memstruct.Queue[TElement] {
 	mark := MemArchLayoutConstructBindMarkToField(blueprint, baseMark, componentIndex, outTargetField)
 	memstruct.QueueInitializeAt[TElement](mark, capacityElements)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Queue[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Queue[TElement]](mark)
+	return value
 }
 
 /*
@@ -334,5 +351,6 @@ func MemArchLayoutConstructBindMatrixToField[TElement foundation.Numeric](
 ) *memstruct.Matrix[TElement] {
 	mark := MemArchLayoutConstructBindMarkToField(blueprint, baseMark, componentIndex, outTargetField)
 	memstruct.MatrixInitializeAt[TElement](mark, capacityRows, capacityCols)
-	return memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[TElement]](mark)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[TElement]](mark)
+	return value
 }

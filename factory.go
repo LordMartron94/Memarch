@@ -50,7 +50,8 @@ func MemArchArrayCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 
 	addr := allocFn(arraySize, arrayAlignment)
 	memstruct.ArrayInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
+	return addr, value
 }
 
 /*
@@ -68,7 +69,8 @@ func MemArchArrayCreateFrom[T any](allocFn AllocationFn, capacityElements uint64
 
 	addr := allocFn(arraySize, arrayAlignment)
 	memstruct.ArrayInitializeFrom[T](addr, srcArray, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](addr)
+	return addr, value
 }
 
 /*
@@ -103,7 +105,8 @@ func MemArchArrayCreateWithSeparatedData[T any](
 
 	headerAddr := headerAllocFn(headerSize, headerAlignment)
 	memstruct.ArrayInitializeWithSeparatedHeaderAndData[T](headerAddr, dataAddr, capacityElements)
-	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+	return headerAddr, value
 }
 
 /*
@@ -133,7 +136,8 @@ func MemArchArrayCreateHeaderOnly[T any](
 	headerAlignment := memstruct.ArrayHeaderRequiredAlignmentGet[T]()
 
 	headerAddr := headerAllocFn(headerSize, headerAlignment)
-	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Array[T]](headerAddr)
+	return headerAddr, value
 }
 
 /*
@@ -145,7 +149,8 @@ func MemArchStackCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 
 	addr := allocFn(stackSize, stackAlignment)
 	memstruct.StackInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Stack[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Stack[T]](addr)
+	return addr, value
 }
 
 /*
@@ -157,7 +162,8 @@ func MemArchQueueCreate[T any](allocFn AllocationFn, capacityElements uint64) (m
 
 	addr := allocFn(queueSize, queueAlignment)
 	memstruct.QueueInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Queue[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Queue[T]](addr)
+	return addr, value
 }
 
 /*
@@ -169,7 +175,8 @@ func MemArchPriorityQueueCreate[T any](allocFn AllocationFn, capacityElements ui
 
 	addr := allocFn(queueSize, queueAlignment)
 	memstruct.PriorityQueueInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
+	return addr, value
 }
 
 /*
@@ -184,7 +191,8 @@ func MemArchPriorityQueueCreateFrom[T any](allocFn AllocationFn, capacityElement
 
 	addr := allocFn(queueSize, queueAlignment)
 	memstruct.PriorityQueueInitializeFrom[T](addr, srcQueue, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.PriorityQueue[T]](addr)
+	return addr, value
 }
 
 /*
@@ -196,7 +204,8 @@ func MemArchFixedOrderedListCreate[T any](allocFn AllocationFn, capacityElements
 
 	addr := allocFn(requiredSize, requiredAlignment)
 	memstruct.FixedOrderedListInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.FixedOrderedList[T]](addr)
+	return addr, value
 }
 
 /*
@@ -208,7 +217,8 @@ func MemArchVectorCreate[T foundation.Numeric](allocFn AllocationFn, capacityEle
 
 	addr := allocFn(vectorSize, vectorAlignment)
 	memstruct.VectorInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+	return addr, value
 }
 
 /*
@@ -223,7 +233,8 @@ func MemArchVectorCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 
 	addr := allocFn(vectorSize, vectorAlignment)
 	memstruct.VectorInitializeFrom[T](addr, src, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](addr)
+	return addr, value
 }
 
 /*
@@ -245,7 +256,8 @@ func MemArchVectorCreateWithSeparatedData[T foundation.Numeric](
 
 	headerAddr := headerAllocFn(headerSize, headerAlignment)
 	memstruct.VectorInitializeWithSeparatedHeaderAndData[T](headerAddr, dataAddr, capacityElements)
-	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
+	return headerAddr, value
 }
 
 /*
@@ -259,7 +271,8 @@ func MemArchVectorCreateHeaderOnly[T foundation.Numeric](
 	capacityElements uint64,
 ) (memcore.MarkRaw, *memstruct.Vector[T]) {
 	headerAddr, _ := MemArchArrayCreateHeaderOnly[T](headerAllocFn, capacityElements)
-	return headerAddr, memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Vector[T]](headerAddr)
+	return headerAddr, value
 }
 
 /*
@@ -271,7 +284,8 @@ func MemArchMatrixCreate[T foundation.Numeric](allocFn AllocationFn, capacityRow
 
 	addr := allocFn(matrixSize, matrixAlignment)
 	memstruct.MatrixInitializeAt[T](addr, capacityRows, capacityCols)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+	return addr, value
 }
 
 /*
@@ -286,7 +300,8 @@ func MemArchMatrixCreateFrom[T foundation.Numeric](allocFn AllocationFn, src mem
 
 	addr := allocFn(matrixSize, matrixAlignment)
 	memstruct.MatrixInitializeFrom[T](addr, src, capacityRows, capacityCols)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.Matrix[T]](addr)
+	return addr, value
 }
 
 /*
@@ -298,7 +313,8 @@ func MemArchStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw,
 
 	addr := allocFn(stringSize, stringAlignment)
 	memstruct.StringInitializeAt(addr, content)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.String](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.String](addr)
+	return addr, value
 }
 
 /*
@@ -326,7 +342,8 @@ func MemArchGoStringCreate(allocFn AllocationFn, content string) (memcore.MarkRa
 
 	addr := allocFn(stringSize, stringAlignment)
 	memstruct.GoStringInitializeAt(addr, content)
-	return addr, memcore.MemcoreMarkDereferenceObject[string](addr)
+	value := memcore.MemcoreMarkDereferenceObject[string](addr)
+	return addr, value
 }
 
 /*
@@ -347,7 +364,8 @@ func MemArchCStringCreate(allocFn AllocationFn, content string) (memcore.MarkRaw
 
 	addr := allocFn(stringSize, stringAlignment)
 	memstruct.CStringInitializeAt(addr, content)
-	return addr, memstruct.CStringPointerGet(addr)
+	value := memstruct.CStringPointerGet(addr)
+	return addr, value
 }
 
 /*
@@ -368,7 +386,8 @@ func MemArchHashMapCreate[TKey, TValue any](
 
 	addr := allocFn(hashMapSize, hashMapAlignment)
 	memstruct.HashMapInitializeAt[TKey, TValue](addr, capacityElements, keyComparisonFunc, keyMarkFunc)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.HashMap[TKey, TValue]](addr)
+	return addr, value
 }
 
 /*
@@ -380,5 +399,6 @@ func MemArchCircularBufferCreate[T any](allocFn AllocationFn, capacityElements u
 
 	addr := allocFn(bufferSize, bufferAlignment)
 	memstruct.CircularBufferInitializeAt[T](addr, capacityElements)
-	return addr, memcore.MemcoreMarkDereferenceObject[memstruct.CircularBuffer[T]](addr)
+	value := memcore.MemcoreMarkDereferenceObject[memstruct.CircularBuffer[T]](addr)
+	return addr, value
 }

@@ -57,8 +57,10 @@ func MemArchValueCreate[T any](allocFn AllocationFn) (memcore.MarkRaw, *T) {
 	if allocFn == nil {
 		panic("memarch: nil allocation function")
 	}
+	memarchManualTypeValidate[T]("MemArchValueCreate")
 	sizeBytes := memcore.SizeOf[T]()
 	alignment := memcore.AlignOf[T]()
 	addr := allocFn(sizeBytes, alignment)
-	return addr, memcore.MemcoreMarkDereferenceObject[T](addr)
+	value := memcore.MemcoreMarkDereferenceObject[T](addr)
+	return addr, value
 }
